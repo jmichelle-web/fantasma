@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fantasma Binário — Quiz de Eletrônica & Código</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #000;
+      color: #0f0;
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Canvas da chuva binária */
+    #binary-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Container principal */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Fantasma binário */
+    .ghost-wrapper {
+      margin: 30px 0 20px;
+      text-align: center;
+      position: relative;
+    }
+
+    .ghost {
+      font-size: 14px;
+      line-height: 1.1;
+      color: #0f0;
+      text-shadow: 0 0 8px #0f0, 0 0 15px #0f0;
+      animation: float 3s ease-in-out infinite;
+      white-space: pre;
+      user-select: none;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
+    .ghost-eyes {
+      color: #f00;
+      text-shadow: 0 0 10px #f00;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      text-align: center;
+      margin-bottom: 8px;
+      text-shadow: 0 0 10px #0f0;
+      letter-spacing: 2px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #0a0;
+      font-size: 0.9rem;
+      margin-bottom: 30px;
+      opacity: 0.8;
+    }
+
+    /* Área da pergunta */
+    .quiz-box {
+      background: rgba(0, 20, 0, 0.85);
+      border: 2px solid #0f0;
+      border-radius: 12px;
+      padding: 25px;
+      width: 100%;
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+      margin-bottom: 20px;
+    }
+
+    .question-number {
+      font-size: 0.85rem;
+      color: #0a0;
+      margin-bottom: 10px;
+    }
+
+    .question-text {
+      font-size: 1.25rem;
+      line-height: 1.5;
+      margin-bottom: 25px;
+      color: #fff;
+      text-shadow: 0 0 5px #0f0;
+    }
+
+    /* Alternativas estilo Show do Milhão */
+    .answers {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .answer-btn {
+      background: rgba(0, 40, 0, 0.9);
+      border: 2px solid #0a0;
+      color: #0f0;
+      padding: 16px 18px;
+      font-size: 1rem;
+      font-family: 'Courier New', monospace;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .answer-btn:hover:not(:disabled) {
+      background: rgba(0, 80, 0, 0.95);
+      border-color: #0f0;
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+      transform: scale(1.02);
+    }
+
+    .answer-btn:disabled {
+      cursor: default;
+      opacity: 0.9;
+    }
+
+    .answer-btn.correct {
+      background: rgba(0, 100, 0, 0.95);
+      border-color: #0f0;
+      box-shadow: 0 0 20px #0f0;
+      color: #fff;
+    }
+
+    .answer-btn.wrong {
+      background: rgba(80, 0, 0, 0.9);
+      border-color: #f00;
+      box-shadow: 0 0 15px #f00;
+      color: #faa;
+    }
+
+    .answer-letter {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      text-align: center;
+      background: #003300;
+      border: 1px solid #0f0;
+      border-radius: 50%;
+      margin-right: 10px;
+      font-weight: bold;
+    }
+
+    /* Feedback */
+    .feedback {
+      margin-top: 20px;
+      padding: 18px;
+      border-radius: 8px;
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .feedback.show {
+      display: block;
+    }
+
+    .feedback.correct {
+      background: rgba(0, 60, 0, 0.9);
+      border: 2px solid #0f0;
+    }
+
+    .feedback.wrong {
+      background: rgba(60, 0, 0, 0.9);
+      border: 2px solid #f00;
+    }
+
+    .feedback h3 {
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+    }
+
+    .feedback p {
+      line-height: 1.5;
+      color: #ccc;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Botões de controle */
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: #003300;
+      border: 2px solid #0f0;
+      color: #0f0;
+      padding: 12px 28px;
+      font-size: 1rem;
+      font-family: 'Courier New', monospace;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-shadow: 0 0 5px #0f0;
+    }
+
+    .btn:hover {
+      background: #005500;
+      box-shadow: 0 0 15px #0f0;
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .score {
+      margin-top: 15px;
+      font-size: 1.1rem;
+      color: #0f0;
+      text-shadow: 0 0 8px #0f0;
+    }
+
+    /* Tela final */
+    .final-screen {
+      display: none;
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .final-screen.show {
+      display: block;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .final-screen h2 {
+      font-size: 2rem;
+      margin-bottom: 15px;
+      text-shadow: 0 0 15px #0f0;
+    }
+
+    /* Responsivo */
+    @media (max-width: 600px) {
+      .answers {
+        grid-template-columns: 1fr;
+      }
+      .ghost {
+        font-size: 11px;
+      }
+      h1 {
+        font-size: 1.3rem;
+      }
+      .question-text {
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="binary-canvas"></canvas>
+
+  <div class="container">
+    <!-- Fantasma feito de binário -->
+    <div class="ghost-wrapper">
+      <pre class="ghost" id="ghost">
+      01001000 01101001
+    01000001 01101101 01101111
+  01010010 00100000 01000101 01110101
+ 01010010 00100000 01000011 01101111 01100100
+01000101 01100111 01101111 00100000 01000010
+  01001001 01001110 01000001 01010010 01001001
+    01001111 00100000 00111010 00101001
+      00101000 00101001 00101000
+        00101000 00101001
+          00101000
+      </pre>
+    </div>
+
+    <h1>👻 FANTASMA BINÁRIO</h1>
+    <p class="subtitle">Quiz de Conhecimento Eletrônico & Códigos</p>
+
+    <!-- Quiz -->
+    <div class="quiz-box" id="quiz-box">
+      <div class="question-number" id="q-number">Pergunta 1 de 8</div>
+      <div class="question-text" id="question">Carregando pergunta...</div>
+
+      <div class="answers" id="answers">
+        <!-- botões gerados via JS -->
+      </div>
+
+      <div class="feedback" id="feedback">
+        <h3 id="feedback-title"></h3>
+        <p id="feedback-text"></p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="next-btn" disabled>Próxima Pergunta →</button>
+      <button class="btn" id="restart-btn" style="display:none;">🔄 Recomeçar</button>
+    </div>
+
+    <div class="score" id="score">Pontuação: 0 / 0</div>
+
+    <!-- Tela final -->
+    <div class="final-screen" id="final-screen">
+      <h2 id="final-title">Fim do Quiz!</h2>
+      <p id="final-message" style="margin: 15px 0; font-size: 1.2rem;"></p>
+      <button class="btn" onclick="location.reload()">Jogar Novamente</button>
+    </div>
+  </div>
+
+  <script>
+    // ========== CHUVA BINÁRIA SUBINDO ==========
+    const canvas = document.getElementById('binary-canvas');
+    const ctx = canvas.getContext('2d');
+
+    let width, height;
+    let columns;
+    let drops = [];
+    const binaryChars = '01';
+    const fontSize = 16;
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      columns = Math.floor(width / fontSize);
+      drops = [];
+      for (let i = 0; i < columns; i++) {
+        drops[i] = Math.random() * height; // começa espalhado
+      }
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+
+    function drawBinaryRain() {
+      // fade suave para efeito de rastro
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.font = fontSize + 'px Courier New';
+
+      for (let i = 0; i < columns; i++) {
+        const char = binaryChars[Math.floor(Math.random() * binaryChars.length)];
+        const x = i * fontSize;
+        const y = drops[i];
+
+        // cor mais clara no "topo" do traço
+        ctx.fillStyle = Math.random() > 0.95 ? '#fff' : '#0f0';
+        ctx.fillText(char, x, y);
+
+        // sobe (y diminui)
+        drops[i] -= fontSize * 0.7 + Math.random() * 2;
+
+        // quando sai da tela por cima, volta por baixo
+        if (drops[i] < -20) {
+          drops[i] = height + Math.random() * 100;
+        }
+      }
+    }
+
+    setInterval(drawBinaryRain, 40);
+
+    // ========== DADOS DO QUIZ ==========
+    const questions = [
+      {
+        question: "Qual é a representação binária do número decimal 13?",
+        options: ["1101", "1011", "1110", "1001"],
+        correct: 0,
+        explanation: "13 em decimal = 8+4+1 = 2³ + 2² + 2⁰ → 1101 em binário."
+      },
+      {
+        question: "O que significa a sigla HTML?",
+        options: [
+          "HyperText Markup Language",
+          "High Tech Modern Language",
+          "Hyper Transfer Machine Language",
+          "Home Tool Markup Language"
+        ],
+        correct: 0,
+        explanation: "HTML significa HyperText Markup Language — a linguagem de marcação padrão da web."
+      },
+      {
+        question: "Qual componente eletrônico limita a corrente em um circuito?",
+        options: ["Capacitor", "Resistor", "Indutor", "Diodo"],
+        correct: 1,
+        explanation: "O resistor limita (ou controla) a corrente elétrica, seguindo a Lei de Ohm (V = R × I)."
+      },
+      {
+        question: "Qual é a unidade de medida da capacitância?",
+        options: ["Ohm (Ω)", "Henry (H)", "Farad (F)", "Ampère (A)"],
+        correct: 2,
+        explanation: "A capacitância é medida em Farads (F). Na prática usamos microfarads (µF) e nanofarads (nF)."
+      },
+      {
+        question: "Em programação, o que faz o operador '&&' em JavaScript?",
+        options: [
+          "Ou lógico (OR)",
+          "E lógico (AND)",
+          "Negação lógica (NOT)",
+          "Comparação de igualdade"
+        ],
+        correct: 1,
+        explanation: "O operador && é o 'E lógico'. Retorna true somente se ambas as condições forem verdadeiras."
+      },
+      {
+        question: "Qual é a tensão típica de uma pilha AA alcalina nova?",
+        options: ["1,2 V", "1,5 V", "3,0 V", "9,0 V"],
+        correct: 1,
+        explanation: "Pilhas AA alcalinas fornecem nominalmente 1,5 V. As recarregáveis NiMH costumam ser 1,2 V."
+      },
+      {
+        question: "O que é um 'bit'?",
+        options: [
+          "A menor unidade de informação digital (0 ou 1)",
+          "Um grupo de 8 bytes",
+          "Um tipo de capacitor",
+          "Uma linguagem de programação"
+        ],
+        correct: 0,
+        explanation: "Bit = Binary Digit. É a menor unidade de dados: pode valer 0 ou 1. 8 bits formam 1 byte."
+      },
+      {
+        question: "Qual dispositivo transforma energia mecânica em energia elétrica?",
+        options: ["Motor", "Gerador", "Transformador", "Retificador"],
+        correct: 1,
+        explanation: "O gerador converte energia mecânica (rotação) em energia elétrica. O motor faz o caminho inverso."
+      }
+    ];
+
+    // ========== LÓGICA DO QUIZ ==========
+    let currentQuestion = 0;
+    let score = 0;
+    let answered = false;
+
+    const qNumber = document.getElementById('q-number');
+    const questionEl = document.getElementById('question');
+    const answersEl = document.getElementById('answers');
+    const feedbackEl = document.getElementById('feedback');
+    const feedbackTitle = document.getElementById('feedback-title');
+    const feedbackText = document.getElementById('feedback-text');
+    const nextBtn = document.getElementById('next-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const scoreEl = document.getElementById('score');
+    const quizBox = document.getElementById('quiz-box');
+    const finalScreen = document.getElementById('final-screen');
+
+    function loadQuestion() {
+      answered = false;
+      feedbackEl.className = 'feedback';
+      nextBtn.disabled = true;
+
+      const q = questions[currentQuestion];
+      qNumber.textContent = `Pergunta ${currentQuestion + 1} de ${questions.length}`;
+      questionEl.textContent = q.question;
+
+      answersEl.innerHTML = '';
+      const letters = ['A', 'B', 'C', 'D'];
+
+      q.options.forEach((opt, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'answer-btn';
+        btn.innerHTML = `<span class="answer-letter">${letters[index]}</span>${opt}`;
+        btn.onclick = () => selectAnswer(index);
+        answersEl.appendChild(btn);
+      });
+
+      scoreEl.textContent = `Pontuação: ${score} / ${currentQuestion}`;
+    }
+
+    function selectAnswer(index) {
+      if (answered) return;
+      answered = true;
+
+      const q = questions[currentQuestion];
+      const buttons = answersEl.querySelectorAll('.answer-btn');
+
+      buttons.forEach((btn, i) => {
+        btn.disabled = true;
+        if (i === q.correct) {
+          btn.classList.add('correct');
+        } else if (i === index) {
+          btn.classList.add('wrong');
+        }
+      });
+
+      if (index === q.correct) {
+        score++;
+        feedbackEl.className = 'feedback show correct';
+        feedbackTitle.textContent = '✅ Correto!';
+        feedbackText.textContent = q.explanation;
+      } else {
+        feedbackEl.className = 'feedback show wrong';
+        feedbackTitle.textContent = '❌ Errado!';
+        feedbackText.innerHTML = `<strong>Resposta correta:</strong> ${q.options[q.correct]}<br><br>${q.explanation}`;
+      }
+
+      scoreEl.textContent = `Pontuação: ${score} / ${currentQuestion + 1}`;
+      nextBtn.disabled = false;
+
+      if (currentQuestion === questions.length - 1) {
+        nextBtn.textContent = 'Ver Resultado Final';
+      }
+    }
+
+    nextBtn.addEventListener('click', () => {
+      currentQuestion++;
+      if (currentQuestion < questions.length) {
+        loadQuestion();
+      } else {
+        showFinal();
+      }
+    });
+
+    function showFinal() {
+      quizBox.style.display = 'none';
+      nextBtn.style.display = 'none';
+      restartBtn.style.display = 'none';
+      scoreEl.style.display = 'none';
+      finalScreen.classList.add('show');
+
+      const percent = Math.round((score / questions.length) * 100);
+      document.getElementById('final-title').textContent = 
+        percent >= 70 ? '🎉 Excelente!' : percent >= 40 ? '👍 Bom trabalho!' : '👻 Continue estudando!';
+      
+      document.getElementById('final-message').innerHTML = 
+        `Você acertou <strong>${score}</strong> de <strong>${questions.length}</strong> perguntas (${percent}%).<br><br>` +
+        (percent === 100 ? 'Você dominou o conhecimento binário!' :
+         percent >= 70 ? 'O Fantasma Binário está orgulhoso de você!' :
+         'Revise os conceitos e tente novamente!');
+    }
+
+    // Inicia o quiz
+    loadQuestion();
+  </script>
+</body>
+</html>
